@@ -4,8 +4,10 @@ import os
 
 app = Flask(__name__)
 
+# Definimos basedir aquí afuera para que exista tanto en local como en Render
+basedir = os.path.abspath(os.path.dirname(__file__))
+
 # Configuración inteligente de la base de datos (Igual a la cantina)
-import os
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
@@ -15,7 +17,6 @@ if DATABASE_URL:
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 else:
     # Si estás en tu Mac, usa el archivo local de siempre
-    basedir = os.path.abspath(os.path.dirname(__file__))
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'inventario.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
