@@ -65,7 +65,7 @@
         }
         h2 { font-size: 1.3rem; margin-top: 0; margin-bottom: 20px; color: #1e293b; display: flex; align-items: center; gap: 8px; }
 
-        /* Formulario Grid Inteligente */
+        /* Formulario Grid */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
         .form-group-btn { display: flex; align-items: flex-end; }
         input { 
@@ -77,9 +77,17 @@
         .btn-add { 
             background-color: var(--verde-caribe); color: white; border: none; 
             padding: 14px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; 
-            font-size: 0.95rem; width: 100%; transition: background 0.2s;
+            font-size: 0.95rem; width: 100%; transition: background 0.2s; text-align: center;
         }
         .btn-add:hover { background-color: #1b4332; }
+
+        /* Search Form */
+        .search-box { display: flex; gap: 10px; flex-wrap: wrap; }
+        .search-box input { flex: 1; min-width: 200px; }
+        .btn-search { background-color: var(--azul-caribe); color: white; border: none; padding: 12px 20px; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .btn-search:hover { background-color: var(--azul-oscuro); }
+        .btn-clear { background-color: #cbd5e1; color: #334155; text-decoration: none; padding: 12px 16px; border-radius: 10px; font-weight: bold; display: flex; align-items: center; }
+        .btn-clear:hover { background-color: #94a3b8; }
 
         /* Tabla Moderna */
         .table-responsive { overflow-x: auto; margin-top: 10px; border-radius: 12px; border: 1px solid #e2e8f0; }
@@ -91,7 +99,7 @@
         /* Badges de Estado */
         .badge { padding: 6px 14px; border-radius: 50px; font-size: 0.8rem; font-weight: 700; display: inline-block; }
         .Disponible { background: #d1e7dd; color: #0f5132; }
-        .Prestados { background: #fef9c3; color: #713f12; }
+        .Prestado, .Prestados { background: #fef9c3; color: #713f12; }
         .En_Reparacion { background: #ffeeec; color: #b91c1c; }
 
         /* Botones de acción */
@@ -127,10 +135,21 @@
             <div class="stat-label">Prestados</div>
             <div class="stat-number">{{ stats.prestados }}</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card reparacion">
             <div class="stat-label">En Reparación</div>
             <div class="stat-number">{{ stats.reparacion }}</div>
         </div>
+    </div>
+
+    <div class="main-card">
+        <h2>📍 Buscar Equipos por Ubicación</h2>
+        <form action="/" method="GET" class="search-box">
+            <input type="text" name="ubicacion_buscar" value="{{ ubicacion_buscar }}" placeholder="Escribe la ubicación a buscar (ej. Aula 3B, Laboratorio)...">
+            <button type="submit" class="btn-search">🔎 Buscar</button>
+            {% if ubicacion_buscar %}
+                <a href="/" class="btn-clear">❌ Mostrar Todos</a>
+            {% endif %}
+        </form>
     </div>
 
     <div class="main-card">
@@ -185,7 +204,11 @@
                     {% else %}
                     <tr>
                         <td colspan="4" style="text-align: center; color: #94a3b8; padding: 30px;">
-                            No hay equipos registrados en el inventario todavía. ¡Comienza agregando uno arriba!
+                            {% if ubicacion_buscar %}
+                                No se encontraron equipos en la ubicación "{{ ubicacion_buscar }}".
+                            {% else %}
+                                No hay equipos registrados en el inventario todavía. ¡Comienza agregando uno arriba!
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
