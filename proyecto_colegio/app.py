@@ -4,25 +4,23 @@ import os
 
 app = Flask(__name__)
 
-# Definimos basedir aquí afuera para que exista tanto en local como en Render
+# Definimos basedir
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# Configuración inteligente de la base de datos (Igual a la cantina)
+# Configuración de la base de datos
 DATABASE_URL = os.environ.get('DATABASE_URL')
 
 if DATABASE_URL:
-    # Si detecta Render, usa la base de datos de internet
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 else:
-    # Si estás en tu Mac, usa el archivo local de siempre
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'inventario.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# Modelo de la Base de Datos ampliado
+# Modelo de la Base de Datos
 class Equipo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
@@ -30,31 +28,42 @@ class Equipo(db.Model):
     informacion = db.Column(db.String(200), default="Sin descripción")
     ubicacion = db.Column(db.String(100), default="Depósito Central")
 
-print("La base de datos se encuentra en:", os.path.join(basedir, 'inventario.db'))
-
 with app.app_context():
     db.create_all()
 
 @app.route('/')
 def inicio():
-    lista_equipos = Equipo.query.all()
-    
-    # Cálculo de estadísticas en tiempo real
+    # Obtener término de búsqueda por ubicación desde la URL (?ubicacion_buscar=...)
+    ubicacion_buscar = request.args.get('ubicacion_buscar', '').strip()
+
+    # Filtrar si el usuario buscó una ubicación concreta
+    if ubicacion_buscar:
+        lista_equipos = Equipo.query.filter(Equipo.ubicacion.ilike(f'%{ubicacion_buscar}%')).all()
+    else:
+        lista_equipos = Equipo.query.all()
+
+    # Cálculo de estadísticas globales sobre el total de la BD
+    todos_los_equipos = Equipo.query.all()
     stats = {
-        'total': len(lista_equipos),
-        'disponibles': len([e for e in lista_equipos if e.estado == 'Disponible']),
-        'prestados': len([e for e in lista_equipos if e.estado == 'Prestados']),
-        'reparacion': len([e for e in lista_equipos if e.estado == 'En_Reparacion'])
+        'total': len(todos_los_equipos),
+        'disponibles': len([e for e in todos_los_equipos if e.estado == 'Disponible']),
+        'prestados': len([e for e in todos_los_equipos if e.estado in ['Prestado', 'Prestados']]),
+        'reparacion': len([e for e in todos_los_equipos if e.estado == 'En_Reparacion'])
     }
-    
-    return render_template('index.html', lista=lista_equipos, stats=stats)
+
+    return render_template(
+        'index.html', 
+        lista=lista_equipos, 
+        stats=stats, 
+        ubicacion_buscar=ubicacion_buscar
+    )
 
 @app.route('/agregar', methods=['POST'])
 def agregar():
     nombre = request.form.get('nombre')
     info = request.form.get('informacion')
     ubicacion = request.form.get('ubicacion')
-    
+
     if nombre:
         nuevo = Equipo(
             nombre=nombre, 
@@ -67,11 +76,14 @@ def agregar():
 
 @app.route('/cambiar_estado/<int:id>')
 def cambiar_estado(id):
-    equipo = db.session.get(Equipo, id)  # Método actualizado para SQLAlchemy moderno
+    equipo = db.session.get(Equipo, id)
     if equipo:
-        # Ciclo de estados limpios sin espacios para el CSS
-        estados = ["Disponible", "Prestados", "En_Reparacion"]
-        indice_actual = estados.index(equipo.estado) if equipo.estado in estados else 0
+        estados = ["Disponible", "Prestado", "En_Reparacion"]
+        
+        # Manejo de compatibilidad con datos previos
+        estado_actual = "Prestado" if equipo.estado == "Prestados" else equipo.estado
+        indice_actual = estados.index(estado_actual) if estado_actual in estados else 0
+        
         proximo_indice = (indice_actual + 1) % len(estados)
         equipo.estado = estados[proximo_indice]
         db.session.commit()
@@ -86,6 +98,5 @@ def eliminar(id):
     return redirect(url_for('inicio'))
 
 if __name__ == '__main__':
-    # Esto lee el puerto de la nube o usa el 5000 por defecto en local
     puerto = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host='0.0.0.0', port=puerto)
